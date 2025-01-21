@@ -47,8 +47,8 @@ Function call for vertex 1302669431 [340, 378, 369, 552, 365] ...
 
 ### Algorithm Visualization (experimental version)
 
-- [DFS (Depth-First Search)](animation.html?speed=500&visited_nodes_data=dfs_visited_nodes) and [DFS Algorithm Visualization](https://antmuraha.github.io/goit-algo-hw-06/images/dfs_algorithm_visualization.webm)
-- [BSF (Breadth-First Search)](animation.html?speed=500&visited_nodes_data=bfs_visited_nodes) and [BFS Algorithm Visualization](https://antmuraha.github.io/goit-algo-hw-06/images/bfs_algorithm_visualization.webm)
+- [DFS (Depth-First Search)](https://antmuraha.github.io/goit-algo-hw-06/animation.html?speed=500&visited_nodes_data=dfs_visited_nodes) and [DFS Algorithm Visualization](https://antmuraha.github.io/goit-algo-hw-06/images/dfs_algorithm_visualization.webm)
+- [BSF (Breadth-First Search)](https://antmuraha.github.io/goit-algo-hw-06/animation.html?speed=500&visited_nodes_data=bfs_visited_nodes) and [BFS Algorithm Visualization](https://antmuraha.github.io/goit-algo-hw-06/images/bfs_algorithm_visualization.webm)
 
 ### Local development
 
