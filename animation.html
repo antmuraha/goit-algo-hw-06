@@ -113,7 +113,7 @@
           speed = 500;
         }
 
-        let url = "/cache/d3_data.json";
+        let url = "cache/d3_data.json";
         const graph_data = await fetchJsonData(url).catch((error) => {
           console.error("Error:", error.message);
         });
@@ -138,7 +138,7 @@
         });
 
         const visited_nodes_data = searchParams.get("visited_nodes_data");
-        url = `/cache/${visited_nodes_data}.json`;
+        url = `cache/${visited_nodes_data}.json`;
         const visited_nodes = await fetchJsonData(url).catch((error) => {
           console.error("Error:", error.message);
         });
