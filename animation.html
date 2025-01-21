@@ -1,0 +1,277 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Algorithm Animation with D3.js (experimental)</title>
+    <script src="https://d3js.org/d3.v7.min.js"></script>
+    <style>
+      body {
+        background-color: black;
+      }
+
+      header {
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+        color: white;
+        margin-bottom: 1rem;
+
+        #current-step {
+          margin-right: 1rem;
+          font-size: 1rem;
+        }
+      }
+
+      h2,
+      h3 {
+        margin: 0;
+      }
+
+      .characteristics {
+        color: white;
+      }
+
+      svg {
+        position: absolute;
+        top: 0;
+        left: 0;
+        right: 0;
+        bottom: 0;
+      }
+      /* Styling for nodes, edges, and the SVG container */
+      .node {
+        stroke: #fff;
+        stroke-width: 1.5px;
+        fill: #3498db;
+        cursor: pointer;
+        transition: r 0.3s, fill 0.3s;
+      }
+      .edge {
+        stroke: #999;
+        stroke-width: 2px;
+        transition: stroke-width 0.3s, stroke 0.3s;
+      }
+      .visited-node {
+        fill: #e74c3c !important;
+      }
+      .current-node {
+        r: 10px;
+        fill: yellow !important;
+      }
+      .visited-edge {
+        stroke: #e74c3c !important;
+      }
+      .current-edge {
+        /* transform: scale(2); */
+        stroke: yellow !important;
+        stroke-width: 2px !important;
+      }
+    </style>
+  </head>
+  <body>
+    <header>
+      <h2 id="title">Algorithm Visualization</h2>
+      <div id="current-step">Step: <span>0</span></div>
+    </header>
+    <div class="characteristics">
+      <h3>Basic characteristics of the graph</h3>
+      <div>Number of vertices (nodes): <span id="num_nodes"></span></div>
+      <div>Number of edges (edges): <span id="num_edges"></span></div>
+      <div>Average degree of vertices: <span id="average_degree"></span></div>
+      <div>The graph is connected: <span id="is_connected"></span></div>
+      <div>The diameter of the graph: <span id="diameter"></span></div>
+      <div>Vertex with maximum centrality: <span id="max_centrality_node"></span></div>
+    </div>
+
+    <svg width="800" height="600" id="graph"></svg>
+    <script>
+      async function fetchJsonData(url) {
+        /**
+         * Fetch JSON data from the given URL.
+         *
+         * @param {string} url - The URL to fetch JSON data from.
+         * @returns {Promise<Object>} - A promise that resolves to the fetched JSON data.
+         */
+        try {
+          const response = await fetch(url);
+          const data = await response.json();
+          console.log(data);
+          return data;
+        } catch (error) {
+          console.error(`Failed to fetch JSON data: ${error.message}`);
+          return null; // Or handle the error as needed
+        }
+      }
+    </script>
+
+    <script>
+      (async function () {
+        const searchParams = new URLSearchParams(location.search);
+        let speed = Number(searchParams.get("speed"));
+        if (isNaN(speed) || !speed) {
+          speed = 500;
+        }
+
+        let url = "/cache/d3_data.json";
+        const graph_data = await fetchJsonData(url).catch((error) => {
+          console.error("Error:", error.message);
+        });
+
+        const nodes = graph_data.nodes;
+        const links = graph_data.links.filter((e) => {
+          const corrected = !(
+            nodes.findIndex((n) => n.id == e.source) == -1 || nodes.findIndex((n) => n.id == e.target) == -1
+          );
+          if (!corrected) {
+            console.warn("Source or target node not exist", e);
+          }
+          return corrected;
+        });
+        console.log("links", links);
+        const meta = graph_data.meta;
+        Object.keys(meta).forEach((key) => {
+          elem = document.querySelector(`#${key}`);
+          if (elem) {
+            elem.textContent = meta[key];
+          }
+        });
+
+        const visited_nodes_data = searchParams.get("visited_nodes_data");
+        url = `/cache/${visited_nodes_data}.json`;
+        const visited_nodes = await fetchJsonData(url).catch((error) => {
+          console.error("Error:", error.message);
+        });
+        document.querySelector(`#title`).textContent = `${visited_nodes.title} (experimental)`;
+        dfsSteps = visited_nodes.data;
+
+        // Define the graph structure
+        const width = window.innerWidth;
+        const height = window.innerHeight;
+        // Create an SVG container
+        const svg = d3.select("#graph").attr("width", width).attr("height", height);
+
+        // Apply zoom behavior
+        const zoom = d3
+          .zoom()
+          .scaleExtent([0.1, 4]) // Set zoom range (min, max scale)
+          .on("zoom", zoomed); // Add zoom event handler
+
+        svg.call(zoom); // Apply the zoom behavior to the SVG container
+
+        // Zoom event handler function
+        function zoomed(event) {
+          // Apply the zoom transformation to the whole graph
+          svg.selectAll("circle").attr("transform", event.transform);
+          svg.selectAll("line").attr("transform", event.transform);
+        }
+
+        // Create a force simulation to manage node positions
+        const simulation = d3
+          .forceSimulation(nodes)
+          .force(
+            "link",
+            d3
+              .forceLink(links)
+              .id((d) => d.id)
+              .strength(0)
+              .distance(1)
+          )
+          .force("charge", d3.forceManyBody().distanceMin(10).distanceMax(5))
+          .force("center", d3.forceCenter(width / 2, height / 2));
+
+        // Create links (edges)
+        const link = svg.selectAll(".link").data(links).enter().append("line").attr("class", "edge");
+
+        // Create nodes
+        const node = svg
+          .selectAll(".node")
+          .data(nodes)
+          .enter()
+          .append("circle")
+          .attr("class", "node")
+          .attr("r", 5)
+          .call(d3.drag().on("start", dragstart).on("drag", dragmove).on("end", dragend));
+
+        // Append text labels to nodes
+        node.append("title").text((d) => "Node " + d.id);
+
+        // Run the simulation to position the nodes
+        simulation.nodes(nodes).on("tick", tick);
+        simulation.force("link").links(links);
+
+        // Function to update the positions of nodes and edges during simulation
+        function tick() {
+          link
+            .attr("x1", (d) => d.source.x)
+            .attr("y1", (d) => d.source.y)
+            .attr("x2", (d) => d.target.x)
+            .attr("y2", (d) => d.target.y);
+
+          node.attr("cx", (d) => d.x).attr("cy", (d) => d.y);
+        }
+
+        // Drag functions
+        function dragstart(event) {
+          if (!event.active) simulation.alphaTarget(0.3).restart();
+          event.subject.fx = event.subject.x;
+          event.subject.fy = event.subject.y;
+        }
+
+        function dragmove(event) {
+          event.subject.fx = event.x;
+          event.subject.fy = event.y;
+        }
+
+        function dragend(event) {
+          if (!event.active) simulation.alphaTarget(0);
+          event.subject.fx = null;
+          event.subject.fy = null;
+        }
+
+        let stepIndex = 0;
+        let lastNodes;
+        let lastEdges;
+
+        function animateDFS() {
+          document.querySelector("#current-step").querySelector("span").textContent = stepIndex + 1;
+          if (stepIndex < dfsSteps.length) {
+            const step = dfsSteps[stepIndex];
+
+            // Highlight the node
+            let nodes = svg.selectAll(".node").filter((d) => d.id === step.nodeId);
+            nodes.classed("visited-node", true);
+            nodes.classed("current-node", true);
+            if (lastNodes) {
+              lastNodes.classed("current-node", false);
+            }
+            lastNodes = nodes;
+
+            // Highlight the edges
+            step.edges.forEach((edge) => {
+              edges = svg
+                .selectAll(".edge")
+                .filter(
+                  (d) =>
+                    (d.source.id === edge.source && d.target.id === edge.target) ||
+                    (d.source.id === edge.target && d.target.id === edge.source)
+                );
+              edges.classed("visited-edge", true);
+              if (lastEdges) {
+                lastEdges.classed("current-edge", false);
+              }
+              edges.classed("current-edge", true);
+              lastEdges = edges;
+            });
+
+            stepIndex++;
+          } else {
+            clearInterval(animationInterval);
+          }
+        }
+
+        const animationInterval = setInterval(animateDFS, speed); // Call animate every N second
+      })();
+    </script>
+  </body>
+</html>
